@@ -8,6 +8,7 @@ import java.io.InputStream;
 
 import javax.imageio.ImageIO;
 
+import com.noser.blog.security.CheckDeleteFile;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,6 @@ import com.noser.blog.domain.BlogFileView;
 import com.noser.blog.domain.Thumbnail;
 import com.noser.blog.repository.FileRepository;
 import com.noser.blog.repository.ThumbnailRepository;
-import com.noser.blog.security.CheckGetAllFilesPermission;
 
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
@@ -55,11 +55,13 @@ public class DBFileService implements FileService {
 	}
 
 	@Override
+	@CheckDeleteFile
 	public boolean deleteFile(Long id) {
+
 		if (!fileRepository.existsById(id)) {
 			return false;
 		}
-		
+
 		fileRepository.deleteById(id);
 		return true;
 	}

@@ -3,7 +3,10 @@ package com.noser.blog.security;
 
 import java.security.Principal;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.noser.blog.domain.BlogFile;
+import com.noser.blog.repository.FileRepository;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -25,10 +28,13 @@ public class SecurityAspect {
 	private final BlogProperties blogProperties;
 	
 	private final ArticleRepository articleRepository;
+
+	private final FileRepository fileRepository;
 	
-	public SecurityAspect(final ArticleRepository articleRepository, final BlogProperties blogProperties) {
+	public SecurityAspect(final ArticleRepository articleRepository, final BlogProperties blogProperties, final FileRepository fileRepository) {
 		this.articleRepository = articleRepository;
 		this.blogProperties = blogProperties;
+		this.fileRepository = fileRepository;
 	}
 
 	@Before("@annotation(checkViewArticlePermission)")
@@ -128,7 +134,62 @@ public class SecurityAspect {
 			throw new UnauthorizedException();
 		}
 	}
-	
+
+	@Before("@annotation(checkDeleteFile)")
+	public void checkDeleteFile(final JoinPoint joinPoint, CheckDeleteFile checkDeleteFile) throws UnauthorizedException{
+		log.info("SecurityAspect.checkDeleteFile");
+		if (this.blogProperties.isSecurityDisabled()){
+			log.warn("WARNING: Global security is disabled!");
+			return;
+		}
+
+		final BlogFile blogFile = fileRepository.findById((Long)(joinPoint.getArgs()[0])).orElse(null);
+//		final BlogFile blogFile = (BlogFile) joinPoint.getArgs()[0];
+		if (blogFile == null) {
+			throw new UnauthorizedException();
+		}
+
+		final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		Principal principal = null;
+		try {
+			principal = (Principal)authentication.getPrincipal();
+		}catch (ClassCastException exception){
+
+		}
+
+		log.warn("Principle Id: {}",principal);
+		log.warn("Blog File Author Id: {}", blogFile.getAuthorId());
+
+		Optional<BlogFile> originalBlogFile = this.fileRepository.findById(blogFile.getId());
+		if (originalBlogFile.isPresent()) {
+				if (!this.allowedToDeleteFileUser(blogFile.getId(),principal,authentication)) {
+					throw new UnauthorizedException();
+				}
+		}
+//
+//		if (!this.allowedToDeleteFile(blogFile.getId(), principal, authentication) ) {
+//			log.warn("Unauthorized access - user {} cannot delete file with id {}", principal, blogFile.getId());
+//			throw new UnauthorizedException();
+//		}
+	}
+
+	private boolean allowedToDeleteFile(Long id, Principal principal, Authentication authentication){
+		Optional<BlogFile> blogFileOptional = this.fileRepository.findById(id);
+		if (!blogFileOptional.isPresent()){
+			return false;
+		}
+		return AccessRights.isAdmin(authentication);
+	}
+
+	private boolean allowedToDeleteFileUser(Long id, Principal principal, Authentication authentication){
+		Optional<BlogFile> blogFileOptional = this.fileRepository.findById(id);
+		if (!blogFileOptional.isPresent()){
+			return false;
+		}
+		return AccessRights.canUserDeleteFile(blogFileOptional.get(),principal,authentication);
+	}
+
+
 	private boolean allowedToEditArticle(Long id, Principal principal, Authentication authentication) {
 		Optional<Article> articleOptional = this.articleRepository.findById(id);
 		if (!articleOptional.isPresent()) {

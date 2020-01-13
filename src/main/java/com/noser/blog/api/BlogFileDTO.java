@@ -9,4 +9,6 @@ public class BlogFileDTO {
   private long id;
   private String name;
   private long size;
+  private boolean deletable;
+
 }
