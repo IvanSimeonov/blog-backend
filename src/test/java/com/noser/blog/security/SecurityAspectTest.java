@@ -10,38 +10,61 @@ import org.aspectj.lang.reflect.SourceLocation;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.Optional;
+
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.when;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest
+
 public class SecurityAspectTest {
 
-    @Autowired
+    @Mock
     FileRepository fileRepository;
 
-    @Autowired
+    @Mock
     ArticleRepository articleRepository;
 
-    @Autowired
+    @Mock
     BlogProperties blogProperties;
 
     SecurityAspect objectUnderTest;
 
     @Before
     public void setup() {
+        MockitoAnnotations.initMocks(this);
+
+
+
+        BlogFile fileOne = BlogFile.builder()
+                .id(1l)
+                .authorId("TEST")
+                .name("TESTFILE")
+                .build();
+        when(fileRepository.findById(1l)).thenReturn(Optional.of(fileOne));
+        when(blogProperties.isSecurityDisabled()).thenReturn(false);
+
         objectUnderTest = new SecurityAspect(this.articleRepository, this.blogProperties, this.fileRepository);
 
     }
 
+
     @Test
-    @WithMockUser(username = "TEST USER", roles = {"user"})
+    @WithMockUser(username = "TEST", authorities = {"user"})
     public void checkDeleteFileUser() throws UnauthorizedException {
-        objectUnderTest.checkDeleteFile(new JoinPoint() {
+        objectUnderTest.checkDeleteFile(getJoinPoint(),null);
+    }
+
+    private JoinPoint getJoinPoint() {
+        return new JoinPoint() {
             @Override
             public String toString() {
                 return null;
@@ -91,57 +114,12 @@ public class SecurityAspectTest {
             public StaticPart getStaticPart() {
                 return null;
             }
-        },null);
+        };
     }
 
     @Test
-    @WithMockUser(username = "TEST USER", roles = {"admin"})
+    @WithMockUser(username = "TEST USER", authorities = {"admin"})
     public void checkDeleteFileAdmin() throws UnauthorizedException {
-        objectUnderTest.checkDeleteFile(new JoinPoint() {
-            @Override
-            public String toShortString() {
-                return null;
-            }
-
-            @Override
-            public String toLongString() {
-                return null;
-            }
-
-            @Override
-            public Object getThis() {
-                return null;
-            }
-
-            @Override
-            public Object getTarget() {
-                return null;
-            }
-
-            @Override
-            public Object[] getArgs() {
-                return new Object[] {Long.valueOf(1l)};
-            }
-
-            @Override
-            public Signature getSignature() {
-                return null;
-            }
-
-            @Override
-            public SourceLocation getSourceLocation() {
-                return null;
-            }
-
-            @Override
-            public String getKind() {
-                return null;
-            }
-
-            @Override
-            public StaticPart getStaticPart() {
-                return null;
-            }
-        }, null);
+        objectUnderTest.checkDeleteFile(getJoinPoint(), null);
     }
 }

@@ -6,8 +6,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
 
+import com.noser.blog.api.BlogFilePageDTO;
 import org.apache.http.entity.ContentType;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -97,4 +99,10 @@ public class FileController {
   public boolean deleteFile(@PathVariable Long id) {
     return this.fileService.deleteFile(id);
   }
+
+  @GetMapping("/files/page/{pageNumber}")
+  public BlogFilePageDTO getBlogFilePage(@PathVariable Long pageNumber){
+    return this.fileService.getBlogFilesPage(pageNumber.intValue());
+  }
+
 }
